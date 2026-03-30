@@ -1,0 +1,57 @@
+# .github/workflows/weekly-purpose-intel.yml
+#
+# Task ID: weekly-purpose-intel-netlify
+# Schedule: Every Monday at 8:00 AM ET (13:00 UTC during EDT / 12:00 UTC during EST)
+# Pipeline: Claude API (web search) → HTML report → Netlify deploy
+#
+# Required GitHub Secrets:
+#   ANTHROPIC_API_KEY  — your Anthropic API key
+#   NETLIFY_AUTH_TOKEN — nfp_3o5wU5UKcktiBoTEsVPTCbJyYTMD17SE54a2
+#
+# Setup:
+#   1. Create a new GitHub repo (e.g. purpose-weekly-intel)
+#   2. Add this file at .github/workflows/weekly-purpose-intel.yml
+#   3. Add deploy.mjs at the repo root
+#   4. Set the two secrets in Settings → Secrets → Actions
+#   5. Done — runs every Monday automatically + manual trigger available
+
+name: Weekly Purpose Intel Report
+
+on:
+  schedule:
+    # 12:00 UTC = 8:00 AM ET (EST). During EDT (Mar–Nov), this fires at 8:00 AM EDT.
+    # Adjust to 12:00 UTC for EST or 12:00 UTC year-round (close enough).
+    - cron: "0 12 * * 1"
+  workflow_dispatch: # Manual trigger from GitHub UI
+
+env:
+  NETLIFY_SITE_ID: amazing-concha-8693fb
+  REPORT_CATEGORIES: "Multi-Asset,Alt Income,Yield Shares"
+
+jobs:
+  generate-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run research → build → deploy pipeline
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: node deploy.mjs
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-report-${{ github.run_number }}
+          path: report.html
+          retention-days: 90
